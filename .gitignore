@@ -6,5 +6,7 @@
 /data/Label052_005.nii.gz
 .python-version
 Data
+data
 nilearn_cache
 **/*.nii.gz
+__pycache__
