@@ -8,7 +8,7 @@ from nilearn import datasets, plotting, image
 from nilearn.image import get_data, index_img, mean_img
 from nilearn.regions import Parcellations, signals_to_img_labels
 
-ROOT = Path('Data', 'MRI-NA216', 'invivo', 'i_fMRI_Aneth_raw').expanduser().resolve()
+ROOT = Path('data', 'i_fMRI_Aneth_raw').expanduser().resolve()
 
 def init_parc(name, nb_clusters, nb_jobs):
     if name == 'ward':
@@ -24,23 +24,23 @@ def init_parc(name, nb_clusters, nb_jobs):
     elif name == 'kmeans':
         return Parcellations(
             method='kmeans',
-            n_parcels=nb_clusters,
+            n_parcels=args.nb_clusters,
             standardize='zscore_sample',
             smoothing_fwhm=4.0,
             memory_level=1,
             memory='nilearn_cache',
             verbose=0,
-            n_jobs=nb_jobs)
+            n_jobs=args.nb_jobs)
     elif name == 'hkmeans':
         return Parcellations(
             method='hierarchical_kmeans',
-            n_parcels=nb_clusters,
+            n_parcels=args.nb_clusters,
             standardize='zscore_sample',
             smoothing_fwhm=4.0,
             memory_level=1,
             memory='nilearn_cache',
             verbose=0,
-            n_jobs=nb_jobs)
+            n_jobs=args.nb_jobs)
 
 
 def get_roi(parc):
@@ -59,9 +59,9 @@ def plot_roi(labels_img):
 
 
 def get_region_signals(parc):
-    # Load average image
-    avg_img = image.load_img(Path('Data', 'MRI-NA216', 'invivo', 'i_Average', 'Average_T1WI.nii.gz'))
 
+    # Load average image
+    avg_img = image.load_img(Path('data', 'Average_T1WI.nii.gz'))
     parc.fit(avg_img)
 
     # Transform images

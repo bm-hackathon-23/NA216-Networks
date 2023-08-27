@@ -5,11 +5,13 @@ import seaborn as sns
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from nilearn import plotting
+from nilearn import plotting, image
 from nilearn.signal import clean
 from nilearn.maskers import NiftiLabelsMasker
 from nilearn.connectome import ConnectivityMeasure
+from nilearn.regions import Parcellations, signals_to_img_labels
 
+import clustering_nilearn
 from pybdm import BDM
 
 # goals:
@@ -43,7 +45,7 @@ def make_time_series(data, labels):
 
     return clean_series
 
-def make_correlation_matrix(time_series, area_labels):
+def make_correlation_matrix(time_series, area_labels, id, parcellation):
 
     correlation_measure = ConnectivityMeasure(kind="correlation")
     correlation_matrix = correlation_measure.fit_transform([time_series])[0]
@@ -52,12 +54,15 @@ def make_correlation_matrix(time_series, area_labels):
     np.fill_diagonal(correlation_matrix, 0)
 
     # matrices are ordered for block-like representation
-    #plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
-    #plt.show()
+    plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
+    plt.savefig(os.path.join('figures', 'adj_matrix', str(parcellation) + '_' + str(id) + '.png'))
+    plt.clf()
+    plt.cla()
+    plt.close()
 
     return correlation_matrix
 
-def make_graph(correlation_matrix, area_labels):
+def make_graph(correlation_matrix, area_labels, id, parcellation):
 
     G = nx.from_numpy_array(correlation_matrix)
 
@@ -77,10 +82,13 @@ def make_graph(correlation_matrix, area_labels):
     G = G.edge_subgraph(edges_to_keep).copy()
 
     # visualize the network
-    #edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
-    #pos = nx.spring_layout(G)
-    #nx.draw(G, pos, node_size=50, node_color='b', edgelist=edges, edge_color=weights, width=2.0, alpha=0.7, edge_cmap=plt.cm.Blues)
-    #plt.show()
+    edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, node_size=50, node_color='b', edgelist=edges, edge_color=weights, width=2.0, alpha=0.7, edge_cmap=plt.cm.Blues)
+    plt.savefig(os.path.join('figures', 'graphs', str(parcellation) + '_' + str(id) + '.png'))
+    plt.clf()
+    plt.cla()
+    plt.close()
 
     return G
 
@@ -102,7 +110,7 @@ def measure_complexity(G):
 
     return k_complexity, entropy
 
-def meat_and_potatoes(id):
+def meat_and_potatoes(id, parc_image, parcellation):
 
     # plot the given correlation matrix
     # aneth_correlations_file = os.path.join('data', 'i_AnethFC', 'AnethFC_005.csv')
@@ -112,8 +120,10 @@ def meat_and_potatoes(id):
     # load in raw nifti file
     data = os.path.join('data', 'i_fMRI_aneth_raw', 'fmri_aneth_raw_' + id + '.nii.gz')
 
-    # load in the pre-defined area segments
-    area_segments = os.path.join('data', 'i_Label052', 'Label052_' + id + '.nii.gz')
+    if parc_image == 'given':
+
+        # load in the pre-defined area segments
+        parc_image = os.path.join('data', 'i_Label052', 'Label052_' + id + '.nii.gz')
 
     # load in the area labels
     labels_file = os.path.join('data', 'labels.txt')
@@ -121,13 +131,13 @@ def meat_and_potatoes(id):
     area_labels = [x.strip() for x in labels_file]
 
     # make the time series
-    time_series = make_time_series(data, area_segments)
+    time_series = make_time_series(data, parc_image)
 
     # turn that into a correlation matrix
-    correlation_matrix = make_correlation_matrix(time_series, area_labels)
+    correlation_matrix = make_correlation_matrix(time_series, area_labels, id, parcellation)
 
     # turn that into a network by making the correlation matrix and adj matrix
-    G = make_graph(correlation_matrix, area_labels)
+    G = make_graph(correlation_matrix, area_labels, id, parcellation)
 
     # if the graph has less than 10 edges, throw it away
     if len(list(G.edges())) < 10:
@@ -146,32 +156,68 @@ if __name__ == '__main__':
     if '.DS_Store' in files: files.remove('.DS_Store')  # osx.... >:c
     ids = list(map(lambda x: x.split('_')[-1].split('.')[0], files))
 
-    # loop over the individuals
+    # save the data in a list of dfs to concat for plotting
     dfs = []
-    for id in ids:
 
-        k_complexity, entropy = meat_and_potatoes(id)
+    # loop over different parcellations
+    parcellations = [13, 26, 'given']
 
-        # remove graphs with no edges
-        if not k_complexity:
-            continue
+    for parcellation in parcellations:
 
-        # save as df (for plotting
-        data = {}
-        data['k_complexity'] = [k_complexity]
-        data['entropy_values'] = [entropy]
-        data['id'] = [id]
-        data['segmentation'] = ['given']
-        df = pd.DataFrame.from_dict(data)
-        dfs.append(df)
+        # see if it is the default parcellation
+        # if it is, then just use the given file
+        if parcellation == 'given':
+            parc_image = parcellation
 
-        print(id)
+        # else, we make our own
+        else:
+            parc = clustering_nilearn.init_parc('ward', parcellation, nb_jobs=1)
+
+            # then get the region signals, which will return 3D image
+            parc_image = clustering_nilearn.get_region_signals(parc)
+
+        # then, loop over the individuals
+        for id in ids:
+
+            k_complexity, entropy = meat_and_potatoes(id, parc_image, parcellation)
+
+            # remove graphs with no edges
+            if not k_complexity:
+                continue
+
+            # save as df (for plotting
+            data = {}
+            data['k_complexity'] = k_complexity
+            data['entropy'] = entropy
+            data['id'] = id
+            data['parcellation'] = parcellation  # Change to variable
+            df = pd.DataFrame.from_dict(data)
+            dfs.append(df)
+
+            print(id)
 
     # concat dfs
     df = pd.concat(dfs)
 
     # plot histogram
-    sns.histplot(data=df, x="k_complexity")
-    plt.show()
+    sns.kdeplot(
+        data=df, x="k_complexity", hue="parcellation",
+        fill=True, common_norm=False, palette="crest",
+        alpha=.5, linewidth=0,
+    )
+    plt.savefig(os.path.join('figures', 'plots', 'k_complexity.png'))
+    plt.clf()
+    plt.cla()
+    plt.close()
 
-    # will probably want to compare these values to random graphs of the same size
+    sns.kdeplot(
+        data=df, x="entropy", hue="parcellation",
+        fill=True, common_norm=False, palette="crest",
+        alpha=.5, linewidth=0,
+    )
+    plt.savefig(os.path.join('figures', 'plots', 'entropy.png'))
+    plt.clf()
+    plt.cla()
+    plt.close()
+
+    # will want to compare these values to random graphs of the same size
