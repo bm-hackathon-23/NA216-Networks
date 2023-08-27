@@ -14,33 +14,33 @@ def init_parc(name, nb_clusters, nb_jobs):
     if name == 'ward':
         return Parcellations(
             method='ward',
-            n_parcels=args.nb_clusters,
+            n_parcels=nb_clusters,
             standardize=False,
             smoothing_fwhm=2.0,
             memory_level=1,
             memory='nilearn_cache',
             verbose=0,
-            n_jobs=args.nb_jobs)
+            n_jobs=nb_jobs)
     elif name == 'kmeans':
         return Parcellations(
             method='kmeans',
-            n_parcels=args.nb_clusters,
+            n_parcels=nb_clusters,
             standardize='zscore_sample',
             smoothing_fwhm=4.0,
             memory_level=1,
             memory='nilearn_cache',
             verbose=0,
-            n_jobs=args.nb_jobs)
+            n_jobs=nb_jobs)
     elif name == 'hkmeans':
         return Parcellations(
             method='hierarchical_kmeans',
-            n_parcels=args.nb_clusters,
+            n_parcels=nb_clusters,
             standardize='zscore_sample',
             smoothing_fwhm=4.0,
             memory_level=1,
             memory='nilearn_cache',
             verbose=0,
-            n_jobs=args.nb_jobs)
+            n_jobs=nb_jobs)
 
 
 def get_roi(parc):
