@@ -8,7 +8,8 @@ from nilearn import datasets, plotting, image
 from nilearn.image import get_data, index_img, mean_img
 from nilearn.regions import Parcellations, signals_to_img_labels
 
-ROOT = Path('data', 'i_fMRI_Aneth_raw').expanduser().resolve()
+#ROOT = Path('data', 'i_fMRI_Aneth_raw').expanduser().resolve()
+ROOT = Path('Data', 'MRI-NA216', 'invivo', 'i_fMRI_Aneth_raw').resolve()
 
 def init_parc(name, nb_clusters, nb_jobs):
     if name == 'ward':
@@ -61,7 +62,7 @@ def plot_roi(labels_img):
 def get_region_signals(parc):
 
     # Load average image
-    avg_img = image.load_img(Path('data', 'Average_T1WI.nii.gz'))
+    avg_img = image.load_img(ROOT.parent.joinpath('i_Average', 'Average_T1WI.nii.gz'))
     parc.fit(avg_img)
 
     # Transform images
@@ -82,8 +83,16 @@ def get_region_signals(parc):
             reg_sigs.append(sig)
             img.uncache()
 
+    shape = None
+    cleaned_reg_sigs = []
+    for sig in reg_sigs:
+        if shape is None:
+            shape = sig.shape
+        elif sig.shape == shape:
+            cleaned_reg_sigs.append(sig)
 
-    reg_sigs = np.mean(np.concatenate(reg_sigs), axis=0, keepdims=True)
+
+    reg_sigs = np.mean(np.concatenate(cleaned_reg_sigs), axis=0, keepdims=True)
     return signals_to_img_labels(reg_sigs, parc.labels_img_)
 
 
