@@ -8,6 +8,8 @@ from nilearn.signal import clean
 from nilearn.maskers import NiftiLabelsMasker
 from nilearn.connectome import ConnectivityMeasure
 
+from pybdm import BDM
+
 # goals:
 # from a time series of the brain signals (average value over the area),
 # get the underlying graph structure
@@ -33,6 +35,10 @@ def make_time_series(data, labels):
     # clean the time series
     clean_series = clean(time_series)
 
+    # plot an example time series
+    # plt.plot(np.arange(0, clean_series.shape[0]), clean_series[:, 0])
+    # plt.show()
+
     return clean_series
 
 def make_correlation_matrix(time_series, area_labels):
@@ -48,6 +54,33 @@ def make_correlation_matrix(time_series, area_labels):
     #plt.show()
 
     return correlation_matrix
+
+def make_graph(correlation_matrix, area_labels):
+
+    G = nx.from_numpy_array(correlation_matrix)
+
+    # add node labels
+    node_mapping = dict(zip(list(range(0, 104)), area_labels))
+    G = nx.relabel_nodes(G, node_mapping)
+
+    # see the distribution of weights to trim out the very small weights
+    #plt.hist(correlation_matrix.flatten(), bins=100)
+    #plt.show()
+    # >>> for now, let's just keep everything greater than 0.1 or less than -0.1
+
+    # filter out edges with small values
+    threshold = 0.2
+    edges_to_keep = list(filter(lambda x: G.get_edge_data(*x)['weight'] > threshold
+                                          or G.get_edge_data(*x)['weight'] < -threshold, G.edges()))
+    G = G.edge_subgraph(edges_to_keep).copy()
+
+    # visualize the network
+    #edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
+    #pos = nx.spring_layout(G)
+    #nx.draw(G, pos, node_size=50, node_color='b', edgelist=edges, edge_color=weights, width=2.0, alpha=0.7, edge_cmap=plt.cm.Blues)
+    #plt.show()
+
+    return G
 
 
 if __name__ == '__main__':
@@ -78,14 +111,18 @@ if __name__ == '__main__':
     correlation_matrix = make_correlation_matrix(time_series, area_labels)
 
     # turn that into a network by making the correlation matrix and adj matrix
-    G = nx.from_numpy_array(correlation_matrix)
+    G = make_graph(correlation_matrix, area_labels)
 
-    # see the distribution of weights to trim out the very small weights
+    # measure the complexity, binarize the weights
 
+    # binarize the adjacency matrix
+    adj_matrix = nx.adjacency_matrix(G)
 
+    # Initialize BDM object
+    bdm = BDM(ndim=2)
 
-    # visualize the network
+    # Compute BDM
+    bdm.bdm(X)
 
-    # plot an example time series
-    #plt.plot(np.arange(0, clean_series.shape[0]), clean_series[:, 0])
-    #plt.show()
+    # BDM objects may also compute standard Shannon entropy in base 2
+    bdm.ent(X)
