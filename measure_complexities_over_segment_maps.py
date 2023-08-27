@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -82,22 +84,36 @@ def make_graph(correlation_matrix, area_labels):
 
     return G
 
+def measure_complexity(G):
 
-if __name__ == '__main__':
+    # binarize the adjacency matrix
+    adj_matrix = nx.adjacency_matrix(G)
+    adj_matrix = adj_matrix.toarray()
+    adj_matrix = (adj_matrix > 0).astype(np.int_)
 
-    # define the parameters
-    individual_id = '005'
+    # Initialize BDM object
+    bdm = BDM(ndim=2)
+
+    # Compute BDM
+    k_complexity = bdm.bdm(adj_matrix)
+
+    # BDM objects may also compute standard Shannon entropy in base 2
+    entropy = bdm.ent(adj_matrix)
+
+    return k_complexity, entropy
+
+def meat_and_potatoes(id):
 
     # plot the given correlation matrix
-    #aneth_correlations_file = os.path.join('data', 'i_AnethFC', 'AnethFC_005.csv')
-    #plot_csv_matrix(aneth_correlations_file)
+    # aneth_correlations_file = os.path.join('data', 'i_AnethFC', 'AnethFC_005.csv')
+    # plot_csv_matrix(aneth_correlations_file)
+    # >>>>> It doesn't look the same at all, probably because this was made with a different pipeline
 
     # load in raw nifti file
-    data = os.path.join('data', 'i_fMRI_aneth_raw', 'fmri_aneth_raw_005.nii.gz')
+    data = os.path.join('data', 'i_fMRI_aneth_raw', 'fmri_aneth_raw_' + id + '.nii.gz')
 
     # load in the pre-defined area segments
-    area_segments = os.path.join('data', 'Label052_005.nii.gz')  # TODO: organize these files
-    # TODO: remove all the data files I'm not suing
+    area_segments = os.path.join('data', 'i_Label052', 'Label052_' + id + '.nii.gz')
 
     # load in the area labels
     labels_file = os.path.join('data', 'labels.txt')
@@ -113,16 +129,49 @@ if __name__ == '__main__':
     # turn that into a network by making the correlation matrix and adj matrix
     G = make_graph(correlation_matrix, area_labels)
 
+    # if the graph has less than 10 edges, throw it away
+    if len(list(G.edges())) < 10:
+        return None, None
+
     # measure the complexity, binarize the weights
+    k_complexity, entropy = measure_complexity(G)
 
-    # binarize the adjacency matrix
-    adj_matrix = nx.adjacency_matrix(G)
+    return k_complexity, entropy
 
-    # Initialize BDM object
-    bdm = BDM(ndim=2)
 
-    # Compute BDM
-    bdm.bdm(X)
+if __name__ == '__main__':
 
-    # BDM objects may also compute standard Shannon entropy in base 2
-    bdm.ent(X)
+    # get list of individual ids
+    files = os.listdir(os.path.join('data', 'i_AnethFC'))
+    if '.DS_Store' in files: files.remove('.DS_Store')  # osx.... >:c
+    ids = list(map(lambda x: x.split('_')[-1].split('.')[0], files))
+
+    # loop over the individuals
+    dfs = []
+    for id in ids:
+
+        k_complexity, entropy = meat_and_potatoes(id)
+
+        # remove graphs with no edges
+        if not k_complexity:
+            continue
+
+        # save as df (for plotting
+        data = {}
+        data['k_complexity'] = [k_complexity]
+        data['entropy_values'] = [entropy]
+        data['id'] = [id]
+        data['segmentation'] = ['given']
+        df = pd.DataFrame.from_dict(data)
+        dfs.append(df)
+
+        print(id)
+
+    # concat dfs
+    df = pd.concat(dfs)
+
+    # plot histogram
+    sns.histplot(data=df, x="k_complexity")
+    plt.show()
+
+    # will probably want to compare these values to random graphs of the same size
