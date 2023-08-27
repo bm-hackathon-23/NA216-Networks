@@ -10,13 +10,13 @@ from matplotlib import cm
 
 # Command line interface
 parse = ArgumentParser()
-parse.add_argument('-d', '--dir', dest='data_pth', type=str, help='The relative path to the directory containing the data.')
+parse.add_argument('-d', '--dir', dest='data_pth', type=str, help='The relative path to the directory containing the data.', required=True)
 parse.add_argument('--viz', dest='plot', action='store_true', help='A flag indicating whether to display the graphs for all labels.')
 parse.add_argument('-2d', dest='two_d', action='store_true', help='A flag indicating whether the display should be in 2D or 3D.')
 args = parse.parse_args()
 
 # Iterate over all available data file
-data_path = Path(args.data_path).expanduser().resolve()
+data_path = Path(args.data_pth).expanduser().resolve()
 for f in data_path.iterdir():
     if f.is_file():
         try:
