@@ -1,0 +1,11 @@
+datalad
+numpy
+scipy
+tqdm
+h5py
+pandas
+tables
+matplotlib
+plotly
+nibabel
+nilearn
