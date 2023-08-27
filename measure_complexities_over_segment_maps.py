@@ -45,7 +45,7 @@ def make_time_series(data, labels):
 
     return clean_series
 
-def make_correlation_matrix(time_series, area_labels, id, parcellation):
+def make_correlation_matrix(time_series, area_labels, id=0, parcellation=0, viz_needed=True):
 
     correlation_measure = ConnectivityMeasure(kind="correlation")
     correlation_matrix = correlation_measure.fit_transform([time_series])[0]
@@ -53,16 +53,17 @@ def make_correlation_matrix(time_series, area_labels, id, parcellation):
     # Mask the main diagonal for visualization:
     np.fill_diagonal(correlation_matrix, 0)
 
-    # matrices are ordered for block-like representation
-    plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
-    plt.savefig(os.path.join('figures', 'adj_matrix', str(parcellation) + '_' + str(id) + '.png'))
-    plt.clf()
-    plt.cla()
-    plt.close()
+    if viz_needed:
+        # matrices are ordered for block-like representation
+        plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
+        plt.savefig(os.path.join('figures', 'adj_matrix', str(parcellation) + '_' + str(id) + '.png'))
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     return correlation_matrix
 
-def make_graph(correlation_matrix, area_labels, id, parcellation):
+def make_graph(correlation_matrix, area_labels, id=0, parcellation=0, viz_needed=True):
 
     G = nx.from_numpy_array(correlation_matrix)
 
@@ -81,14 +82,15 @@ def make_graph(correlation_matrix, area_labels, id, parcellation):
                                           or G.get_edge_data(*x)['weight'] < -threshold, G.edges()))
     G = G.edge_subgraph(edges_to_keep).copy()
 
-    # visualize the network
-    edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
-    pos = nx.spring_layout(G)
-    nx.draw(G, pos, node_size=50, node_color='b', edgelist=edges, edge_color=weights, width=2.0, alpha=0.7, edge_cmap=plt.cm.Blues)
-    plt.savefig(os.path.join('figures', 'graphs', str(parcellation) + '_' + str(id) + '.png'))
-    plt.clf()
-    plt.cla()
-    plt.close()
+    if viz_needed:
+        # visualize the network
+        edges, weights = zip(*nx.get_edge_attributes(G, 'weight').items())
+        pos = nx.spring_layout(G)
+        nx.draw(G, pos, node_size=50, node_color='b', edgelist=edges, edge_color=weights, width=2.0, alpha=0.7, edge_cmap=plt.cm.Blues)
+        plt.savefig(os.path.join('figures', 'graphs', str(parcellation) + '_' + str(id) + '.png'))
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     return G
 
