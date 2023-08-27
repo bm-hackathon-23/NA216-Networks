@@ -87,6 +87,10 @@ def get_region_signals(parc):
     return signals_to_img_labels(reg_sigs, parc.labels_img_)
 
 
+def save_img(img, file_path):
+    img.to_filename(Path(file_path).resolve())
+
+
 def plot_region_signals(reg_sigs):
     # Visualizing the clusters
     first_plot = plotting.plot_img(
@@ -117,7 +121,9 @@ if __name__ == '__main__':
     # Visualization
     if args.roi:
         roi = get_roi(parc)
+        save_img(roi, 'region_of_interest.nii.gz')
         plot_roi(roi)
     else:
         reg_sig = get_region_signals(parc)
+        save_img(reg_sig, 'region_signals.nii.gz')
         plot_region_signals(reg_sig)
