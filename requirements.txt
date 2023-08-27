@@ -7,4 +7,7 @@ matplotlib
 nibabel
 nilearn
 seaborn
-networkx
+networkx[default,extra]
+pybdm
+node2vec
+sklearn
