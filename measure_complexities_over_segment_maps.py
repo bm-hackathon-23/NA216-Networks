@@ -55,8 +55,8 @@ def make_correlation_matrix(time_series, area_labels, id=0, parcellation=0, viz_
 
     if viz_needed:
         # matrices are ordered for block-like representation
-        plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
-        plt.savefig(os.path.join('figures', 'adj_matrix', str(parcellation) + '_' + str(id) + '.png'))
+        #plotting.plot_matrix(correlation_matrix, figure=(10, 8), labels=area_labels, vmax=0.8, vmin=-0.8, reorder=True)
+        #plt.savefig(os.path.join('figures', 'adj_matrix', str(parcellation) + '_' + str(id) + '.png'))
         plt.clf()
         plt.cla()
         plt.close()
@@ -81,6 +81,9 @@ def make_graph(correlation_matrix, area_labels, id=0, parcellation=0, viz_needed
     edges_to_keep = list(filter(lambda x: G.get_edge_data(*x)['weight'] > threshold
                                           or G.get_edge_data(*x)['weight'] < -threshold, G.edges()))
     G = G.edge_subgraph(edges_to_keep).copy()
+
+    if len(list(G.edges())) < 10:
+        return None
 
     if viz_needed:
         # visualize the network
@@ -142,6 +145,10 @@ def meat_and_potatoes(id, parc_image, parcellation):
     G = make_graph(correlation_matrix, area_labels, id, parcellation)
 
     # if the graph has less than 10 edges, throw it away
+    if not G: return None, None
+    if len(list(G.edges())) < 10: return None, None
+
+    # if the graph has less than 10 edges, throw it away
     if len(list(G.edges())) < 10:
         return None, None
 
@@ -156,7 +163,7 @@ if __name__ == '__main__':
     # get list of individual ids
     files = os.listdir(os.path.join('data', 'i_AnethFC'))
     if '.DS_Store' in files: files.remove('.DS_Store')  # osx.... >:c
-    ids = list(map(lambda x: x.split('_')[-1].split('.')[0], files))
+    ids = list(map(lambda x: x.split('_')[-1].split('.')[0], files))[:2]
 
     # save the data in a list of dfs to concat for plotting
     dfs = []
@@ -189,10 +196,10 @@ if __name__ == '__main__':
 
             # save as df (for plotting
             data = {}
-            data['k_complexity'] = k_complexity
-            data['entropy'] = entropy
-            data['id'] = id
-            data['parcellation'] = parcellation  # Change to variable
+            data['k_complexity'] = [k_complexity]
+            data['entropy'] = [entropy]
+            data['id'] = [id]
+            data['parcellation'] = [parcellation]
             df = pd.DataFrame.from_dict(data)
             dfs.append(df)
 
@@ -202,11 +209,12 @@ if __name__ == '__main__':
     df = pd.concat(dfs)
 
     # plot histogram
-    sns.kdeplot(
+    g = sns.kdeplot(
         data=df, x="k_complexity", hue="parcellation",
         fill=True, common_norm=False, palette="crest",
         alpha=.5, linewidth=0,
     )
+    g.set_yscale("log")
     plt.savefig(os.path.join('figures', 'plots', 'k_complexity.png'))
     plt.clf()
     plt.cla()
