@@ -4,3 +4,6 @@
 /data/i_fMRI_aneth_raw/
 /data/i_fMRI_Awake_Raw/
 /data/Label052_005.nii.gz
+.python-version
+Data
+nilearn_cache
